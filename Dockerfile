@@ -13,7 +13,8 @@
 # DOCKER-VERSION    0.5.3
 
 # See http://phusion.github.io/baseimage-docker/
-FROM phusion/baseimage:latest
+#FROM phusion/baseimage:latest
+FROM phusion/baseimage:bionic-1.0.0
 
 MAINTAINER Justin Plock <jplock@gmail.com>
 
@@ -23,28 +24,34 @@ RUN /etc/my_init.d/00_regen_ssh_host_keys.sh
 
 RUN sed 's/main$/main universe/' -i /etc/apt/sources.list
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y -q update
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y -q install python-software-properties g++ make git curl
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y -q install software-properties-common g++ make git curl
 RUN curl -sL https://deb.nodesource.com/setup_10.x | setuser root bash -
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y -q install nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Optional, useful for development
 # See https://github.com/phusion/baseimage-docker#login_ssh
-#RUN rm -f /etc/service/sshd/down
-#RUN /usr/sbin/enable_insecure_key
+RUN rm -f /etc/service/sshd/down
+RUN /usr/sbin/enable_insecure_key
 
 # Install Haraka
 RUN npm install -g Haraka --unsafe
 RUN haraka -i /usr/local/haraka
 ADD ./config/host_list /usr/local/haraka/config/host_list
 ADD ./config/plugins /usr/local/haraka/config/plugins
+ADD ./config/smtp.ini /usr/local/haraka/config/smtp.ini
+ADD ./package.json /usr/local/haraka/package.json
+
 RUN cd /usr/local/haraka && npm install
 
 # Create haraka runit service
 RUN mkdir /etc/service/haraka
 ADD haraka.sh /etc/service/haraka/run
+ADD haraka.js /usr/local/haraka/haraka.js
 
-EXPOSE 25
+EXPOSE 8025
 
 # Start the init daemon - runit will launch the Haraka process
-CMD ["/sbin/my_init"]
+#CMD ["/sbin/my_init"]
+RUN cd /usr/local/haraka
+CMD ["haraka","-c", "/usr/local/haraka"]
